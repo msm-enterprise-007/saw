@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Roue de la Fortune</title>
+<style>
+  :root {
+    --bg: #0f0e17;
+    --surface: #1a1828;
+    --gold: #f4c542;
+    --gold-dark: #c9971a;
+    --text: #fffffe;
+    --muted: #a7a9be;
+    --c2:  #3a86ff;
+    --c4:  #ff006e;
+    --c5:  #8338ec;
+    --c7:  #fb5607;
+    --c10: #06d6a0;
+    --c20: #f4c542;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *, *::before, *::after { box-sizing: inherit; margin: 0; padding: 0; }
+
+  html { height: 100%; }
+  body {
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 16px 100px; /* espace pour le bouton fixe en bas */
+    gap: 18px;
+  }
+
+  h1 {
+    font-size: clamp(1.2rem, 4vw, 1.8rem);
+    font-weight: 800;
+    color: var(--gold);
+    text-align: center;
+  }
+  .sub {
+    font-size: 0.82rem;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 3px;
+  }
+
+  /* ---- Sélection multi ---- */
+  .picks {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+  .pick-btn {
+    width: 58px; height: 58px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 1.15rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform .15s, border-color .15s, background .15s, box-shadow .15s;
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+  }
+  .pick-btn:hover:not(:disabled) { transform: scale(1.08); }
+  .pick-btn.selected {
+    border-color: var(--gold);
+    background: #2a2640;
+    color: var(--gold);
+  }
+  /* Checkmark sur sélection */
+  .pick-btn.selected::after {
+    content: '✓';
+    position: absolute;
+    bottom: -2px; right: -2px;
+    width: 18px; height: 18px;
+    background: var(--gold);
+    color: #0f0e17;
+    border-radius: 50%;
+    font-size: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900;
+    line-height: 18px;
+  }
+  .pick-btn[data-val="2"]  { box-shadow: 0 0 0 2px var(--c2)  inset; }
+  .pick-btn[data-val="4"]  { box-shadow: 0 0 0 2px var(--c4)  inset; }
+  .pick-btn[data-val="5"]  { box-shadow: 0 0 0 2px var(--c5)  inset; }
+  .pick-btn[data-val="7"]  { box-shadow: 0 0 0 2px var(--c7)  inset; }
+  .pick-btn[data-val="10"] { box-shadow: 0 0 0 2px var(--c10) inset; }
+  .pick-btn[data-val="20"] { box-shadow: 0 0 0 2px var(--c20) inset; }
+  .pick-btn.selected[data-val="2"]  { box-shadow: 0 0 0 3px var(--c2)  inset; }
+  .pick-btn.selected[data-val="4"]  { box-shadow: 0 0 0 3px var(--c4)  inset; }
+  .pick-btn.selected[data-val="5"]  { box-shadow: 0 0 0 3px var(--c5)  inset; }
+  .pick-btn.selected[data-val="7"]  { box-shadow: 0 0 0 3px var(--c7)  inset; }
+  .pick-btn.selected[data-val="10"] { box-shadow: 0 0 0 3px var(--c10) inset; }
+  .pick-btn.selected[data-val="20"] { box-shadow: 0 0 0 3px var(--c20) inset; }
+  .pick-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; }
+
+  /* ---- Roue + flèche droite ---- */
+  .wheel-area {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-shrink: 0;
+  }
+
+  .wheel-wrap {
+    position: relative;
+    width: min(78vw, 360px);
+    aspect-ratio: 1;
+  }
+
+  canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border-radius: 50%;
+  }
+
+  /* Flèche à droite, pointant vers la gauche (← ) */
+  .arrow {
+    width: 0; height: 0;
+    border-top: 14px solid transparent;
+    border-bottom: 14px solid transparent;
+    border-right: 28px solid var(--gold);
+    filter: drop-shadow(0 0 6px rgba(244,197,66,.7));
+    flex-shrink: 0;
+    margin-left: 4px;
+  }
+
+  /* ---- Résultat ---- */
+  .result-box {
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
+    font-weight: 600;
+    text-align: center;
+    color: var(--muted);
+    padding: 0 8px;
+  }
+  .result-box.win  { color: var(--gold); }
+  .result-box.lose { color: #ff5c8a; }
+
+  /* ---- Légende ---- */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    justify-content: center;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+  .legend-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ---- Bouton Jouer fixe en bas ---- */
+  .play-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(to top, #0f0e17 70%, transparent);
+    display: flex;
+    justify-content: center;
+    z-index: 100;
+  }
+  .play-btn {
+    width: 100%;
+    max-width: 400px;
+    height: 54px;
+    border-radius: 27px;
+    border: none;
+    background: var(--gold);
+    color: #0f0e17;
+    font-size: 1.1rem;
+    font-weight: 900;
+    letter-spacing: .5px;
+    cursor: pointer;
+    transition: transform .12s, opacity .12s, background .12s;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 4px 20px rgba(244,197,66,.35);
+  }
+  .play-btn:hover:not(:disabled) { transform: scale(1.03); background: #ffe066; }
+  .play-btn:active:not(:disabled) { transform: scale(0.98); }
+  .play-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* ---- Mise en surbrillance secteurs gagnants pendant le spin ---- */
+
+  @media (min-width: 600px) {
+    body { padding-bottom: 110px; }
+    .wheel-wrap { width: min(65vw, 420px); }
+    .pick-btn { width: 64px; height: 64px; }
+  }
+
+  @media (min-width: 900px) {
+    body {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 40px 40px 100px;
+      gap: 32px;
+    }
+    .left-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      max-width: 300px;
+    }
+    .wheel-wrap { width: 420px; }
+    .play-btn { max-width: 480px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="left-panel" id="leftPanel">
+  <div>
+    <h1>🎡 La Roue</h1>
+    <p class="sub">Mise sur un ou plusieurs nombres, puis joue !</p>
+  </div>
+
+  <div class="picks" id="picks">
+    <button class="pick-btn" data-val="2">2</button>
+    <button class="pick-btn" data-val="4">4</button>
+    <button class="pick-btn" data-val="5">5</button>
+    <button class="pick-btn" data-val="7">7</button>
+    <button class="pick-btn" data-val="10">10</button>
+    <button class="pick-btn" data-val="20">20</button>
+  </div>
+
+  <div class="result-box" id="result">Sélectionne un ou plusieurs nombres.</div>
+  <div class="legend" id="legend"></div>
+</div>
+
+<div class="wheel-area">
+  <div class="wheel-wrap" id="wheelWrap">
+    <canvas id="wheel"></canvas>
+  </div>
+  <div class="arrow"></div>
+</div>
+
+<!-- Bouton fixe en bas -->
+<div class="play-bar">
+  <button class="play-btn" id="playBtn" disabled>🎯 Jouer</button>
+</div>
+
+<script>
+const SECTORS = [4,2,10,2,5,2,4,2,5,4,2,20,7,2,4,5,2,4,2,7];
+const N = SECTORS.length;
+const COLORS = {
+  2:  '#3a86ff',
+  4:  '#ff006e',
+  5:  '#8338ec',
+  7:  '#fb5607',
+  10: '#06d6a0',
+  20: '#f4c542'
+};
+const ARC = (2 * Math.PI) / N;
+
+const canvas  = document.getElementById('wheel');
+const ctx     = canvas.getContext('2d');
+const playBtn = document.getElementById('playBtn');
+const resultEl = document.getElementById('result');
+const picksEl  = document.getElementById('picks');
+const legendEl = document.getElementById('legend');
+
+let currentAngle = 0;
+let spinning = false;
+let chosen = new Set(); // multi-sélection
+
+/* ---- Légende ---- */
+const vals = [2,4,5,7,10,20];
+const counts = {};
+SECTORS.forEach(v => counts[v] = (counts[v]||0)+1);
+vals.forEach(v => {
+  const el = document.createElement('div');
+  el.className = 'legend-item';
+  el.innerHTML = `<span class="legend-dot" style="background:${COLORS[v]}"></span>${v} — ${counts[v]} case${counts[v]>1?'s':''}`;
+  legendEl.appendChild(el);
+});
+
+/* ---- Resize canvas ---- */
+function resize() {
+  const wrap = document.getElementById('wheelWrap');
+  const size = wrap.offsetWidth;
+  canvas.width  = size * devicePixelRatio;
+  canvas.height = size * devicePixelRatio;
+  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  draw(currentAngle);
+}
+
+/* ---- Dessin ---- */
+// La flèche est à DROITE → le secteur pointé est à angle 0 (3h = angle 0 en canvas)
+// On dessine les secteurs à partir de 0 (3h) pour coller à la flèche droite.
+function draw(angle) {
+  const size = canvas.width / devicePixelRatio;
+  const cx = size / 2, cy = size / 2, r = size / 2 - 4;
+  ctx.clearRect(0, 0, size, size);
+
+  for (let i = 0; i < N; i++) {
+    const start = angle + i * ARC;
+    const end   = start + ARC;
+    const val   = SECTORS[i];
+    const isChosen = chosen.has(val);
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, start, end);
+    ctx.closePath();
+    ctx.fillStyle = COLORS[val];
+    ctx.fill();
+
+    // Contour plus épais si misé
+    ctx.strokeStyle = isChosen ? '#ffffff' : '#0f0e17';
+    ctx.lineWidth   = isChosen ? 3 : 1.5;
+    ctx.stroke();
+
+    // Texte
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(start + ARC / 2);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = val === 20 ? '#0f0e17' : '#fff';
+    ctx.font = `bold ${Math.max(11, size * 0.052)}px 'Segoe UI', sans-serif`;
+    ctx.fillText(String(val), r - 10, 5);
+    ctx.restore();
+  }
+
+  // Centre
+  ctx.beginPath();
+  ctx.arc(cx, cy, size * 0.1, 0, 2 * Math.PI);
+  ctx.fillStyle = '#0f0e17';
+  ctx.fill();
+  ctx.strokeStyle = '#2a2640';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+}
+
+/* ---- Sélection (toggle multi) ---- */
+function updatePlayBtn() {
+  playBtn.disabled = chosen.size === 0 || spinning;
+  if (chosen.size === 0) {
+    resultEl.textContent = 'Sélectionne un ou plusieurs nombres.';
+    resultEl.className = 'result-box';
+  } else {
+    const list = [...chosen].sort((a,b)=>a-b).join(', ');
+    resultEl.textContent = `Misé sur : ${list}. À toi de jouer !`;
+    resultEl.className = 'result-box';
+  }
+}
+
+picksEl.querySelectorAll('.pick-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (spinning) return;
+    const val = parseInt(btn.dataset.val);
+    if (chosen.has(val)) {
+      chosen.delete(val);
+      btn.classList.remove('selected');
+    } else {
+      chosen.add(val);
+      btn.classList.add('selected');
+    }
+    draw(currentAngle); // redessiner pour mettre en évidence
+    updatePlayBtn();
+  });
+});
+
+/* ---- Spin ---- */
+playBtn.addEventListener('click', () => {
+  if (spinning || chosen.size === 0) return;
+  spinning = true;
+  playBtn.disabled = true;
+  picksEl.querySelectorAll('.pick-btn').forEach(b => b.disabled = true);
+  resultEl.textContent = '🌀 La roue tourne…';
+  resultEl.className = 'result-box';
+
+  const extraSpins = 5 + Math.floor(Math.random() * 6);
+  const landAngle  = Math.random() * 2 * Math.PI;
+  const total      = extraSpins * 2 * Math.PI + landAngle;
+  const duration   = 3800 + Math.random() * 1500;
+  const tStart     = performance.now();
+  const startAngle = currentAngle;
+
+  function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
+
+  function animate(now) {
+    const t = Math.min((now - tStart) / duration, 1);
+    currentAngle = startAngle + total * easeOut(t);
+    draw(currentAngle);
+    if (t < 1) requestAnimationFrame(animate);
+    else {
+      currentAngle = startAngle + total;
+      draw(currentAngle);
+      showResult();
+    }
+  }
+  requestAnimationFrame(animate);
+});
+
+/* ---- Résultat ---- */
+// Flèche à droite → pointe vers l'angle 0 (3h).
+// Secteur i occupe [i*ARC, (i+1)*ARC] après rotation `currentAngle`.
+// Le pointeur est à l'angle 0. On cherche quel secteur contient l'angle 0.
+function showResult() {
+  const norm = ((currentAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  // angle 0 relatif à la roue = -norm (mod 2π)
+  const pointer = ((- norm) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+  const idx = Math.floor(pointer / ARC) % N;
+  const landed = SECTORS[idx];
+  const win = chosen.has(landed);
+
+  if (win) {
+    resultEl.innerHTML = `🎉 <strong>${landed}</strong> — Tu as gagné !`;
+    resultEl.className = 'result-box win';
+  } else {
+    const list = [...chosen].sort((a,b)=>a-b).join(', ');
+    resultEl.innerHTML = `😬 <strong>${landed}</strong> — Perdu ! Tu misais sur ${list}.`;
+    resultEl.className = 'result-box lose';
+  }
+
+  spinning = false;
+  picksEl.querySelectorAll('.pick-btn').forEach(b => b.disabled = false);
+  playBtn.disabled = chosen.size === 0;
+}
+
+/* ---- Init ---- */
+const ro = new ResizeObserver(() => {
+  ctx.setTransform(1,0,0,1,0,0);
+  resize();
+});
+ro.observe(document.getElementById('wheelWrap'));
+resize();
+</script>
+</body>
+</html>
