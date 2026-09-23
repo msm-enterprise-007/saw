@@ -2,733 +2,755 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Wheel — Fortune</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Spin and Win</title>
 <style>
-  :root {
-    --bg:       #0c0c0e;
-    --surface:  #141417;
-    --card:     #1b1b1f;
-    --border:   #2a2a30;
-    --gold:     #c9a84c;
-    --gold-lt:  #e8cc80;
-    --gold-dim: rgba(201,168,76,.12);
-    --text:     #f0ede8;
-    --muted:    #6b6a72;
-    --soft:     #9e9ca6;
-    --c2:  #4e85d4;
-    --c4:  #c94f6e;
-    --c5:  #7b5ea7;
-    --c7:  #c96d32;
-    --c10: #3a9e7e;
-    --c20: #c9a84c;
-    box-sizing: border-box;
-    padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
-  *, *::before, *::after { box-sizing: inherit; margin: 0; padding: 0; }
-  html { height: 100%; }
-  body {
-    min-height: 100%;
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Inter', system-ui, sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 28px 16px 110px;
-    gap: 22px;
-  }
-  header { text-align: center; }
-  header h1 {
-    font-family: 'Playfair Display', Georgia, serif;
-    font-size: clamp(1.5rem, 5vw, 2.2rem);
-    font-weight: 700;
-    color: var(--gold-lt);
-    letter-spacing: .02em;
-  }
-  header p {
-    font-size: 0.78rem;
-    color: var(--muted);
-    margin-top: 4px;
-    letter-spacing: .04em;
-    text-transform: uppercase;
-  }
-  .rule {
-    width: 48px; height: 1px;
-    background: linear-gradient(to right, transparent, var(--gold), transparent);
-    flex-shrink: 0;
-  }
-  .section-label {
-    font-size: 0.65rem;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    color: var(--muted);
-    text-align: center;
-    margin-bottom: 10px;
-  }
-  .picks {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 8px;
-  }
-  .pick-btn {
-    position: relative;
-    width: 54px; height: 54px;
-    border-radius: 50%;
-    border: 1px solid var(--border);
-    background: var(--card);
-    color: var(--soft);
-    font-family: 'Playfair Display', serif;
-    font-size: 1.05rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: border-color .2s, color .2s, background .2s, transform .15s;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .pick-btn:hover:not(:disabled) { border-color: var(--gold); color: var(--gold-lt); transform: scale(1.06); }
-  .pick-btn.selected { background: var(--gold-dim); border-color: var(--gold); color: var(--gold-lt); }
-  .pick-btn.selected::after {
-    content: '';
-    position: absolute;
-    inset: -1px;
-    border-radius: 50%;
-    box-shadow: 0 0 12px rgba(201,168,76,.3);
-    pointer-events: none;
-  }
-  .pick-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; }
-  .pick-btn::before {
-    content: '';
-    position: absolute;
-    bottom: 4px; left: 50%; transform: translateX(-50%);
-    width: 6px; height: 6px;
-    border-radius: 50%;
-  }
-  .pick-btn[data-val="2"]::before  { background: var(--c2); }
-  .pick-btn[data-val="4"]::before  { background: var(--c4); }
-  .pick-btn[data-val="5"]::before  { background: var(--c5); }
-  .pick-btn[data-val="7"]::before  { background: var(--c7); }
-  .pick-btn[data-val="10"]::before { background: var(--c10); }
-  .pick-btn[data-val="20"]::before { background: var(--c20); }
-  .wheel-area { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-  .wheel-wrap { position: relative; width: min(80vw, 340px); aspect-ratio: 1; }
-  canvas {
-    width: 100%; height: 100%;
-    display: block;
-    border-radius: 50%;
-    box-shadow: 0 0 0 1px var(--border), 0 8px 40px rgba(0,0,0,.6);
-    transition: opacity .3s;
-  }
-  .arrow-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; flex-shrink: 0; }
-  .arrow {
-    width: 0; height: 0;
-    border-top: 11px solid transparent;
-    border-bottom: 11px solid transparent;
-    border-right: 22px solid var(--gold);
-    filter: drop-shadow(0 0 8px rgba(201,168,76,.5));
-  }
-  .result-box {
-    min-height: 44px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.95rem; font-weight: 500;
-    text-align: center; color: var(--muted);
-    padding: 0 8px; transition: color .3s;
-  }
-  .result-box.win  { color: var(--gold-lt); }
-  .result-box.lose { color: #c9607a; }
-  .stats { display: flex; gap: 24px; justify-content: center; }
-  .stat { text-align: center; }
-  .stat-val {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.5rem; font-weight: 700;
-    color: var(--text);
-  }
-  .stat-val.green { color: var(--c10); }
-  .stat-val.red   { color: #c9607a; }
-  .stat-lbl { font-size: 0.62rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-top: 2px; }
-  .history-section { width: 100%; max-width: 480px; }
-  .history-header {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 10px; padding-bottom: 8px;
-    border-bottom: 1px solid var(--border);
-  }
-  .history-title { font-size: 0.65rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
-  .clear-btn {
-    font-size: 0.65rem; letter-spacing: .08em; text-transform: uppercase;
-    color: var(--muted); background: none; border: none; cursor: pointer;
-    padding: 2px 6px; border-radius: 4px; transition: color .15s;
-  }
-  .clear-btn:hover { color: #c9607a; }
-  .history-empty { text-align: center; color: var(--muted); font-size: 0.82rem; padding: 20px 0; }
-  .history-list { display: flex; flex-direction: column; gap: 6px; }
-  .history-row {
-    display: flex; align-items: center; gap: 10px;
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 10px; padding: 10px 14px;
-    font-size: 0.82rem;
-    animation: slideIn .25s ease;
-  }
-  @keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
-  .hist-num { font-size: 0.62rem; color: var(--muted); min-width: 18px; text-align: right; }
-  .hist-badge {
-    width: 28px; height: 28px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Playfair Display', serif; font-size: 0.8rem; font-weight: 700;
-    flex-shrink: 0; color: #fff;
-  }
-  .hist-detail { flex: 1; color: var(--soft); font-size: 0.78rem; }
-  .hist-detail strong { color: var(--text); font-weight: 600; }
-  .hist-tag {
-    font-size: 0.65rem; font-weight: 600; letter-spacing: .06em;
-    text-transform: uppercase; padding: 3px 8px; border-radius: 20px; flex-shrink: 0;
-  }
-  .hist-tag.win  { background: rgba(58,158,126,.15); color: var(--c10); }
-  .hist-tag.lose { background: rgba(201,96,122,.12); color: #c9607a; }
-  .play-bar {
-    position: fixed; bottom: 0; left: 0; right: 0;
-    padding: 14px 20px calc(14px + env(safe-area-inset-bottom, 0px));
-    background: linear-gradient(to top, var(--bg) 65%, transparent);
-    display: flex; justify-content: center; z-index: 100;
-  }
-  .play-btn {
-    width: 100%; max-width: 400px; height: 52px;
-    border-radius: 8px; border: 1px solid var(--gold);
-    background: transparent; color: var(--gold-lt);
-    font-family: 'Inter', sans-serif; font-size: 0.85rem;
-    font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
-    cursor: pointer; transition: background .2s, color .2s, transform .1s, opacity .2s;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .play-btn:hover:not(:disabled) { background: var(--gold-dim); transform: scale(1.01); }
-  .play-btn:active:not(:disabled) { transform: scale(0.98); }
-  .play-btn:disabled { opacity: 0.25; cursor: not-allowed; border-color: var(--muted); color: var(--muted); }
-  @media (min-width: 600px) {
-    body { padding-bottom: 110px; }
-    .wheel-wrap { width: min(60vw, 400px); }
-    .pick-btn { width: 60px; height: 60px; }
-  }
-  @media (min-width: 960px) {
-    body { flex-direction: row; flex-wrap: wrap; align-items: flex-start; justify-content: center; padding: 48px 40px 110px; gap: 40px; }
-    .left-col { display: flex; flex-direction: column; align-items: center; gap: 20px; width: 280px; }
-    .right-col { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; }
-    .wheel-wrap { width: 400px; }
-    .history-section { max-width: 380px; }
-    .play-btn { max-width: 460px; }
-  }
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family:'Segoe UI',sans-serif;
+  background:#111;
+  display:flex; justify-content:center; align-items:center; min-height:100vh;
+}
+.phone {
+  width:390px; height:844px;
+  background:linear-gradient(160deg,#1a0a3c 0%,#0d1a4a 40%,#1a0a3c 70%,#2a0a3c 100%);
+  position:relative; overflow:hidden; border-radius:40px;
+  border:2px solid rgba(255,255,255,0.08);
+  box-shadow:0 30px 80px rgba(0,0,0,0.8);
+  display:flex; flex-direction:column;
+}
+.city-svg-bg {
+  position:absolute; bottom:50px; left:0; right:0;
+  width:100%; opacity:0.35; pointer-events:none; z-index:0;
+}
+.status-bar {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:10px 18px 4px; font-size:12px; color:white; font-weight:600;
+  position:relative; z-index:10; background:#000; border-radius:38px 38px 0 0; flex-shrink:0;
+}
+.status-time { font-size:14px; font-weight:700; }
+.status-icons { display:flex; gap:5px; align-items:center; }
+.battery { background:#4caf50; border-radius:3px; padding:1px 6px; font-size:11px; font-weight:700; }
+.top-nav {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 18px 8px; position:relative; z-index:10; flex-shrink:0;
+}
+.back-btn { color:rgba(255,255,255,0.7); font-size:20px; cursor:pointer; }
+.balance-wrap { display:flex; align-items:center; gap:8px; font-size:20px; font-weight:700; color:white; }
+.add-btn {
+  width:28px; height:28px; background:#00c853; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; color:white; font-weight:300; box-shadow:0 0 12px rgba(0,200,83,0.5); cursor:pointer;
+}
+.nav-icons { display:flex; gap:8px; align-items:center; }
+.share-btn,.info-btn {
+  width:34px; height:34px; border:1.5px solid rgba(255,255,255,0.4); border-radius:50%;
+  display:flex; align-items:center; justify-content:center; color:white; font-size:14px; cursor:pointer;
+}
+.bonus-btn {
+  width:34px; height:34px; border:1.5px solid #ffd700; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  color:#ffd700; font-size:8px; font-weight:700; text-align:center; line-height:1.1;
+  cursor:pointer; position:relative;
+}
+.bonus-plus {
+  position:absolute; bottom:-2px; right:-2px; width:12px; height:12px;
+  background:#ffd700; border-radius:50%; color:#000; font-size:9px; font-weight:900;
+  display:flex; align-items:center; justify-content:center;
+}
+.subtitle {
+  text-align:center; color:rgba(255,255,255,0.55); font-size:11px;
+  letter-spacing:2.5px; text-transform:uppercase; margin-bottom:10px;
+  position:relative; z-index:10; flex-shrink:0;
+}
+
+/* ===== STATE LOBBY ===== */
+#state-lobby { flex:1; display:flex; flex-direction:column; position:relative; z-index:5; overflow:hidden; }
+.lobby-main { flex:1; display:flex; gap:12px; padding:0 14px; overflow:hidden; }
+
+/* Multiplier pills */
+.multipliers { display:flex; flex-direction:column; gap:8px; width:172px; flex-shrink:0; }
+.mult-btn {
+  height:66px; border-radius:38px; border:none; cursor:pointer;
+  font-size:22px; font-weight:800; color:white;
+  text-shadow:0 2px 4px rgba(0,0,0,0.4);
+  position:relative; transition:transform 0.12s, box-shadow 0.12s;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+}
+.mult-btn::before {
+  content:''; position:absolute; top:6px; left:14px; right:14px;
+  height:28%; background:rgba(255,255,255,0.22); border-radius:20px;
+}
+.mult-btn:active { transform:scale(0.96); }
+.mult-btn.selected { box-shadow:0 0 0 3px white, 0 8px 24px rgba(255,255,255,0.25) !important; }
+.mult-x2  { background:linear-gradient(180deg,#4db8ff,#1e90ff,#1060cc); box-shadow:0 5px 18px rgba(30,144,255,0.4); }
+.mult-x4  { background:linear-gradient(180deg,#dd66dd,#cc44cc,#8a2be2); box-shadow:0 5px 18px rgba(204,68,204,0.4); }
+.mult-x5  { background:linear-gradient(180deg,#ffe566,#ffd700,#ddaa00); box-shadow:0 5px 18px rgba(255,215,0,0.4); }
+.mult-x7  { background:linear-gradient(180deg,#66ee66,#33cc33,#22aa22); box-shadow:0 5px 18px rgba(51,204,51,0.4); }
+.mult-x10 { background:linear-gradient(180deg,#ff7777,#ff4444,#cc2222); box-shadow:0 5px 18px rgba(255,68,68,0.4); }
+.mult-x20 { background:linear-gradient(180deg,#33bb55,#22aa22,#116611); box-shadow:0 5px 18px rgba(34,170,34,0.4); }
+.mult-sub { font-size:16px; font-weight:700; opacity:0.95; line-height:1; }
+
+/* Mise panel */
+.mise-panel {
+  flex:1; background:rgba(5,10,40,0.75); border-radius:14px;
+  border:1px solid rgba(255,255,255,0.1); padding:12px 10px;
+  display:flex; flex-direction:column; gap:8px; overflow-y:auto;
+}
+.mise-header-title { color:white; font-size:15px; font-weight:700; }
+.mise-header-total { color:white; font-size:18px; font-weight:800; }
+.mise-row {
+  display:flex; align-items:center; gap:8px;
+  background:rgba(255,255,255,0.06); border-radius:8px; padding:7px 8px; flex-shrink:0;
+}
+.mise-row-color { width:32px; height:32px; border-radius:6px; flex-shrink:0; }
+.mise-row-amount { color:white; font-size:14px; font-weight:600; flex:1; }
+.mise-row-del { color:rgba(255,255,255,0.5); font-size:15px; cursor:pointer; padding:4px; }
+.mise-row-del:hover { color:#ff6b6b; }
+
+/* JOUER */
+.jouer-wrap { padding:8px 14px 4px; flex-shrink:0; position:relative; z-index:10; }
+.jouer-btn {
+  width:100%; background:linear-gradient(135deg,#5bc8ff,#2979ff,#1565c0);
+  border:none; border-radius:14px; color:white; font-size:17px; font-weight:800;
+  padding:15px; cursor:pointer; letter-spacing:2px;
+  box-shadow:0 6px 20px rgba(41,121,255,0.5); transition:transform 0.1s;
+}
+.jouer-btn:active { transform:scale(0.98); }
+
+/* Bottom controls */
+.bottom-section { padding:6px 14px 0; flex-shrink:0; position:relative; z-index:10; }
+.quick-btns { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:7px; }
+.quick-btn {
+  background:rgba(70,130,200,0.3); border:1px solid rgba(100,160,255,0.25);
+  border-radius:10px; color:white; font-size:13px; font-weight:700;
+  padding:9px 4px; cursor:pointer; text-align:center; transition:background 0.15s;
+}
+.quick-btn:hover { background:rgba(70,130,200,0.5); }
+.bet-row {
+  display:flex; gap:10px; align-items:center;
+  background:rgba(255,255,255,0.07); border-radius:12px; padding:9px 14px;
+}
+.bet-input-wrap { flex:1; }
+.bet-amount-display { font-size:22px; font-weight:700; color:white; display:block; margin-bottom:2px; }
+.bet-limits { font-size:10px; color:rgba(255,255,255,0.35); }
+.mise-action-btn {
+  background:linear-gradient(135deg,#5bc8ff,#1976d2); border:none; border-radius:10px;
+  color:white; font-size:14px; font-weight:800; padding:12px 20px;
+  cursor:pointer; letter-spacing:1px; box-shadow:0 4px 14px rgba(33,150,243,0.4);
+  transition:transform 0.1s;
+}
+.mise-action-btn:active { transform:scale(0.96); }
+.msg-bar {
+  text-align:center; font-size:11px; font-weight:600; padding:4px 14px;
+  min-height:20px; flex-shrink:0; position:relative; z-index:10;
+}
+
+/* Footer */
+.footer {
+  display:flex; background:#000; border-top:1px solid rgba(255,255,255,0.08);
+  border-radius:0 0 38px 38px; position:relative; z-index:10; flex-shrink:0;
+}
+.footer-btn {
+  flex:1; background:transparent; border:none; color:rgba(255,255,255,0.85);
+  font-size:12px; font-weight:700; padding:13px 8px 18px;
+  display:flex; align-items:center; justify-content:center; gap:6px;
+  letter-spacing:0.8px; text-transform:uppercase; cursor:pointer;
+}
+.footer-divider { width:1px; background:rgba(255,255,255,0.12); margin:8px 0; }
+
+/* ===== STATE WHEEL ===== */
+#state-wheel { flex:1; position:relative; z-index:5; }
+.wheel-container {
+  position:absolute; left:-190px; top:50%; transform:translateY(-60%);
+  width:380px; height:380px;
+}
+.wheel-static {
+  position:absolute; inset:0; border-radius:50%;
+  background:radial-gradient(circle,transparent 0%,transparent 85%,#f9a825 90.5%,#e65100 95%,#bf360c 100%);
+  box-shadow:0 0 0 3px #ffd740,0 0 28px rgba(255,183,0,0.6),0 8px 32px rgba(0,0,0,0.6);
+  z-index:4; pointer-events:none;
+}
+.wheel-static::before {
+  content:''; position:absolute; inset:5px; border-radius:50%;
+  border:2px dotted rgba(255,255,255,0.45);
+}
+.wheel-spin-inner {
+  position:absolute; inset:14px; border-radius:50%; overflow:hidden; z-index:3;
+}
+.wheel-svg-el { width:100%; height:100%; }
+.wheel-hub {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:52px; height:52px; border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#90caf9,#1976d2 50%,#0d47a1 100%);
+  box-shadow:0 0 0 4px #ffd740,0 0 14px rgba(255,215,0,0.4),0 4px 12px rgba(0,0,0,0.5);
+  z-index:10;
+}
+.arrow-wrapper {
+  position:absolute; left:338px; top:50%; transform:translateY(-50%); z-index:20;
+}
+.mise-panel-spin {
+  position:absolute; right:14px; top:50%; transform:translateY(-60%);
+  height:420px; width:162px;
+  background:rgba(5,10,40,0.82); border-radius:14px;
+  border:1px solid rgba(255,255,255,0.1);
+  padding:14px 12px; display:flex; flex-direction:column; gap:8px;
+  overflow-y:auto; z-index:10;
+}
+
+/* Modal règles */
+.rules-overlay {
+  position:absolute; inset:0; background:rgba(0,0,0,0.85);
+  display:flex; align-items:center; justify-content:center;
+  z-index:100; border-radius:38px; animation:fadeIn 0.3s ease;
+}
+.rules-box {
+  background:linear-gradient(160deg,#1a0a3c,#0d1a4a);
+  border:1.5px solid rgba(255,215,0,0.4); border-radius:20px;
+  padding:24px 22px; width:330px; max-height:700px; overflow-y:auto;
+}
+.rules-header {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:18px;
+}
+.rules-title {
+  color:#ffd700; font-size:16px; font-weight:800; letter-spacing:1px;
+  text-transform:uppercase;
+}
+.rules-close {
+  width:30px; height:30px; border-radius:50%;
+  background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);
+  color:white; font-size:16px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+.rules-close:hover { background:rgba(255,255,255,0.2); }
+.rules-list { display:flex; flex-direction:column; gap:14px; }
+.rules-item {
+  display:flex; gap:12px; align-items:flex-start;
+}
+.rules-num {
+  width:26px; height:26px; border-radius:50%; flex-shrink:0;
+  background:linear-gradient(135deg,#ffd700,#f9a825);
+  color:#000; font-size:12px; font-weight:900;
+  display:flex; align-items:center; justify-content:center;
+}
+.rules-text {
+  color:rgba(255,255,255,0.85); font-size:13px; line-height:1.6; flex:1;
+}
+.rules-text strong { color:#ffd700; }
+.rules-divider {
+  height:1px; background:rgba(255,255,255,0.08); margin:4px 0;
+}
+.rules-footer {
+  margin-top:18px; padding:12px; border-radius:10px;
+  background:rgba(255,107,107,0.1); border:1px solid rgba(255,107,107,0.3);
+  color:rgba(255,255,255,0.7); font-size:11px; line-height:1.6; text-align:center;
+}
+
+/* Result overlay */
+.result-overlay {
+  position:absolute; inset:0; background:rgba(0,0,0,0.8);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  z-index:50; border-radius:38px; animation:fadeIn 0.4s ease;
+}
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+.result-box {
+  background:linear-gradient(160deg,#1a0a3c,#0d1a4a);
+  border:2px solid rgba(255,215,0,0.5); border-radius:24px;
+  padding:28px 36px; text-align:center; min-width:260px;
+  box-shadow:0 0 60px rgba(255,215,0,0.15);
+}
+.result-sector-label { color:rgba(255,255,255,0.6); font-size:12px; letter-spacing:2px; text-transform:uppercase; margin-bottom:6px; }
+.result-mult { font-size:68px; font-weight:900; margin-bottom:4px; }
+.result-detail { color:rgba(255,255,255,0.7); font-size:13px; margin-bottom:4px; }
+.result-gain { color:white; font-size:20px; font-weight:700; margin-bottom:6px; }
+.result-gain.win span { color:#00e676; }
+.result-gain.lose span { color:#ff5252; }
+.result-new-balance { color:rgba(255,215,0,0.8); font-size:13px; margin-bottom:22px; }
+.result-btn {
+  background:linear-gradient(135deg,#5bc8ff,#2979ff); border:none; border-radius:12px;
+  color:white; font-size:15px; font-weight:800; padding:13px 36px;
+  cursor:pointer; letter-spacing:1px; transition:transform 0.1s;
+}
+.result-btn:active { transform:scale(0.97); }
+
+.hidden { display:none !important; }
 </style>
 </head>
 <body>
+<div class="phone">
 
-<div class="left-col" id="leftCol">
-  <header>
-    <h1>La Roue</h1>
-    <p>Jeu de prédiction</p>
-  </header>
-  <div class="rule"></div>
-  <div style="width:100%">
-    <p class="section-label">Mise — choisir un ou plusieurs</p>
-    <div class="picks" id="picks">
-      <button class="pick-btn" data-val="2">2</button>
-      <button class="pick-btn" data-val="4">4</button>
-      <button class="pick-btn" data-val="5">5</button>
-      <button class="pick-btn" data-val="7">7</button>
-      <button class="pick-btn" data-val="10">10</button>
-      <button class="pick-btn" data-val="20">20</button>
+  <!-- City BG -->
+  <svg class="city-svg-bg" viewBox="0 0 390 220" xmlns="http://www.w3.org/2000/svg">
+    <rect x="178" y="10" width="5" height="30" fill="rgba(120,80,200,0.8)"/>
+    <rect x="175" y="40" width="11" height="8" fill="rgba(120,80,200,0.8)"/>
+    <rect x="170" y="48" width="21" height="8" fill="rgba(120,80,200,0.8)"/>
+    <rect x="165" y="56" width="31" height="60" fill="rgba(120,80,200,0.8)"/>
+    <rect x="160" y="116" width="41" height="50" fill="rgba(120,80,200,0.8)"/>
+    <rect x="155" y="166" width="51" height="54" fill="rgba(100,60,180,0.8)"/>
+    <rect x="0"   y="140" width="60" height="80" fill="rgba(80,50,150,0.6)"/>
+    <rect x="60"  y="160" width="40" height="60" fill="rgba(70,40,130,0.6)"/>
+    <rect x="100" y="150" width="50" height="70" fill="rgba(80,50,150,0.6)"/>
+    <rect x="260" y="150" width="50" height="70" fill="rgba(80,50,150,0.6)"/>
+    <rect x="310" y="140" width="40" height="80" fill="rgba(70,40,130,0.6)"/>
+    <rect x="350" y="160" width="40" height="60" fill="rgba(80,50,150,0.6)"/>
+    <rect x="0"   y="215" width="390" height="5" fill="rgba(150,100,255,0.3)"/>
+  </svg>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <span class="status-time" id="clock">00:00</span>
+    <!-- <div class="status-icons">
+      <span style="font-size:11px">⏰ 🔵 4.5G 📶</span>
+      <span class="battery">76</span>
+    </div> -->
+  </div>
+
+  <!-- TOP NAV -->
+  <div class="top-nav">
+    <div class="back-btn">←</div>
+    <div class="balance-wrap">
+      <span id="balanceDisplay">100 000 F</span>
+      <div class="add-btn">+</div>
+    </div>
+    <div class="nav-icons">
+      <!-- <div class="share-btn">⇪</div>
+      <div class="bonus-btn">☆<br><span style="font-size:7px">BONUS</span><div class="bonus-plus">+</div></div> -->
+      <div class="info-btn" onclick="openRules()">ⓘ</div>
     </div>
   </div>
-  <div class="result-box" id="result">Sélectionne un ou plusieurs nombres.</div>
-  <div class="rule"></div>
-  <div class="stats">
-    <div class="stat"><div class="stat-val" id="statTotal">0</div><div class="stat-lbl">Parties</div></div>
-    <div class="stat"><div class="stat-val green" id="statWin">0</div><div class="stat-lbl">Victoires</div></div>
-    <div class="stat"><div class="stat-val red" id="statLose">0</div><div class="stat-lbl">Défaites</div></div>
-  </div>
-</div>
+  <div class="subtitle">Spin and Win</div>
 
-<div class="right-col" id="rightCol">
-  <div class="wheel-area">
-    <div class="wheel-wrap" id="wheelWrap">
-      <canvas id="wheel"></canvas>
+  <!-- ========== LOBBY ========== -->
+  <div id="state-lobby">
+    <div class="lobby-main">
+      <!-- Pills -->
+      <div class="multipliers">
+        <button class="mult-btn mult-x2"  data-mult="2"  onclick="selectMult(this)">x2</button>
+        <button class="mult-btn mult-x4"  data-mult="4"  onclick="selectMult(this)">x4</button>
+        <button class="mult-btn mult-x5"  data-mult="5"  onclick="selectMult(this)">x5</button>
+        <button class="mult-btn mult-x7"  data-mult="7"  onclick="selectMult(this)">x7</button>
+        <button class="mult-btn mult-x10" data-mult="10" onclick="selectMult(this)">x10</button>
+        <button class="mult-btn mult-x20" data-mult="20" onclick="selectMult(this)">x20</button>
+      </div>
+      <!-- Mise panel -->
+      <div class="mise-panel">
+        <div class="mise-header-title">Votre mise :</div>
+        <div class="mise-header-total" id="miseTotalDisplay"></div>
+        <div id="miseRows"></div>
+      </div>
     </div>
-    <div class="arrow-wrap"><div class="arrow"></div></div>
-  </div>
-  <div class="history-section">
-    <div class="history-header">
-      <span class="history-title">Historique</span>
-      <button class="clear-btn" id="clearBtn">Effacer</button>
-    </div>
-    <div id="historyList"><p class="history-empty">Aucune partie jouée.</p></div>
-  </div>
-</div>
 
-<div class="play-bar">
-  <button class="play-btn" id="playBtn" disabled>Lancer la roue</button>
+    <!-- JOUER -->
+    <div class="jouer-wrap hidden" id="jouerWrap">
+      <button class="jouer-btn" onclick="startSpin()">JOUER</button>
+    </div>
+
+    <!-- Bottom -->
+    <div class="bottom-section">
+      <div class="quick-btns">
+        <button class="quick-btn" onclick="setBet('min')">MIN.</button>
+        <button class="quick-btn" onclick="setBet('x2')">X2</button>
+        <button class="quick-btn" onclick="setBet('div2')">X/2</button>
+        <button class="quick-btn" onclick="setBet('max')">MAX.</button>
+      </div>
+      <div class="bet-row">
+        <div class="bet-input-wrap">
+          <span class="bet-amount-display" id="betDisplay">200 F</span>
+          <span class="bet-limits">min 200 F  –  max 710 001 F</span>
+        </div>
+        <button class="mise-action-btn" onclick="placeMise()">MISE</button>
+      </div>
+    </div>
+    <div class="msg-bar" id="msgBar"></div>
+  </div>
+
+  <!-- ========== WHEEL ========== -->
+  <div id="state-wheel" class="hidden">
+    <div class="wheel-container">
+      <div class="wheel-static"></div>
+      <div class="wheel-spin-inner" id="wheelSpinner">
+        <svg id="wheelSvg" class="wheel-svg-el" viewBox="0 0 352 352" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <div class="wheel-hub"></div>
+      <div class="arrow-wrapper">
+        <svg width="50" height="28" viewBox="0 0 50 28" xmlns="http://www.w3.org/2000/svg"
+             style="filter:drop-shadow(0 2px 8px rgba(0,0,0,0.8))">
+          <defs>
+            <radialGradient id="bG" cx="40%" cy="35%">
+              <stop offset="0%" stop-color="#90caf9"/>
+              <stop offset="55%" stop-color="#1976d2"/>
+              <stop offset="100%" stop-color="#0d47a1"/>
+            </radialGradient>
+            <linearGradient id="tG" x1="100%" y1="0%" x2="0%" y2="0%">
+              <stop offset="0%" stop-color="#fff176"/>
+              <stop offset="50%" stop-color="#ffd740"/>
+              <stop offset="100%" stop-color="#f9a825"/>
+            </linearGradient>
+          </defs>
+          <polygon points="36,7 16,14 36,21" fill="url(#tG)"/>
+          <circle cx="40" cy="14" r="9" fill="url(#bG)"/>
+          <circle cx="40" cy="14" r="9" fill="none" stroke="#ffe57a" stroke-width="2.5"/>
+          <circle cx="37" cy="11" r="2.5" fill="rgba(255,255,255,0.35)"/>
+        </svg>
+      </div>
+    </div>
+    <!-- Mise panel tall -->
+    <div class="mise-panel-spin" id="spinMisePanel"></div>
+  </div>
+
+  <div class="footer">
+    <button class="footer-btn">⚙️ PARAMÈTRES</button>
+    <div class="footer-divider"></div>
+    <button class="footer-btn">⚡ EN UN CLIC</button>
+  </div>
 </div>
 
 <script>
-// ============================================================
-//  CONFIGURATION DE LA ROUE
-//  Les 20 secteurs dans l'ordre physique sur la roue.
-//  Chaque secteur a le même arc (18°) — la fréquence d'un
-//  nombre dépend uniquement du nombre de fois qu'il apparaît.
-// ============================================================
-const SECTORS = [4,2,10,2,5,2,4,2,5,4,2,20,7,2,4,5,2,4,2,7];
-const N   = SECTORS.length;           // 20 secteurs
-const ARC = (2 * Math.PI) / N;       // arc de chaque secteur en radians
+// ══════════════ CONSTANTS ══════════════
+const WHEEL_ORDER = [4,2,10,2,5,2,4,2,5,4,2,20,7,2,4,5,2,4,2,7];
+const NUMBERS     = [2,4,5,7,10,20];
+const COLORS      = {2:'#1e90ff',4:'#cc44cc',5:'#ffd700',7:'#33cc33',10:'#ff4444',20:'#22aa22'};
+const MIN_BET     = 200;
+const MAX_BET     = 710001;
+const DEFAULT_BAL = 100000;
 
-const COLORS = {
-  2: '#4e85d4', 4: '#c94f6e', 5: '#7b5ea7',
-  7: '#c96d32', 10: '#3a9e7e', 20: '#c9a84c'
-};
+// ══════════════ STATE ══════════════
+let balance     = loadBalance();
+let betAmount   = 200;
+let selectedNum = null;
+let bets        = {};        // { mult: amount }
+let currentRot  = 0;
 
-// ============================================================
-//  MOTEUR DE DÉCISION — "BACKEND"
-//  C'est ici que toute la logique de manipulation est centralisée.
-//  Invisible pour l'utilisateur, elle détermine le résultat
-//  AVANT que l'animation ne commence.
-// ============================================================
-const ENGINE = {
+// ══════════════ PERSISTENCE ══════════════
+function loadBalance() {
+  try { const b = parseFloat(localStorage.getItem('spinwin_balance')); return b > 0 ? b : DEFAULT_BAL; }
+  catch(e) { return DEFAULT_BAL; }
+}
+function saveBalance() {
+  try { localStorage.setItem('spinwin_balance', balance); } catch(e) {}
+}
 
-  // ----------------------------------------------------------
-  //  ÉTAT INTERNE DU MOTEUR
-  //  Mémorisé entre chaque partie, jamais exposé à l'UI.
-  // ----------------------------------------------------------
-  state: {
-    totalGames     : 0,       // nombre total de parties jouées
-    lastLost       : null,    // dernier nombre sur lequel le joueur a PERDU
-    lastMises      : [],      // mises du dernier tour
-    firstGame      : true,    // flag : est-ce la toute première partie ?
-    consecutiveLoss: 0,       // compteur de défaites consécutives
-  },
+// ══════════════ CLOCK ══════════════
+function updateClock() {
+  const n = new Date();
+  document.getElementById('clock').textContent =
+    String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+}
+updateClock(); setInterval(updateClock, 10000);
 
-  // ----------------------------------------------------------
-  //  HEURE DÉCLENCHEUR
-  //  À cette heure précise (HH:MM), la roue simulera un gain
-  //  sur le 20 pour créer l'illusion d'un moment "chanceux".
-  //  Configurable selon la stratégie souhaitée.
-  // ----------------------------------------------------------
-  TRIGGER_HOUR  : 21,
-  TRIGGER_MINUTE: 41,
+// ══════════════ BALANCE DISPLAY ══════════════
+function refreshBalance() {
+  document.getElementById('balanceDisplay').textContent = formatF(balance);
+  saveBalance();
+}
 
-  // ----------------------------------------------------------
-  //  PROBABILITÉS ÉGALES — BASE NEUTRE
-  //  Chacun des 6 nombres a théoriquement 1/6 de chance.
-  //  On choisit un secteur au hasard parmi les 20,
-  //  ce qui donne des probabilités réelles proportionnelles
-  //  à la fréquence d'apparition sur la roue.
-  //  Cette fonction est le tirage "honnête" de référence.
-  // ----------------------------------------------------------
-  fairDraw() {
-    const idx = Math.floor(Math.random() * N);
-    return { value: SECTORS[idx], sectorIndex: idx };
-  },
+function formatF(n) {
+  return n.toLocaleString('fr-FR', {maximumFractionDigits:0}) + ' F';
+}
 
-  // ----------------------------------------------------------
-  //  TIRAGE FORCÉ SUR UNE VALEUR CIBLE
-  //  Sélectionne aléatoirement un secteur qui correspond
-  //  à la valeur souhaitée. Utilisé par les mécaniques de
-  //  manipulation pour orienter le résultat sans que
-  //  l'animation ne paraisse suspecte.
-  // ----------------------------------------------------------
-  forceDraw(targetValue) {
-    const matching = SECTORS
-      .map((v, i) => ({ v, i }))
-      .filter(s => s.v === targetValue);
-    const picked = matching[Math.floor(Math.random() * matching.length)];
-    return { value: picked.v, sectorIndex: picked.i };
-  },
+// ══════════════ BET AMOUNT ══════════════
+function setBet(action) {
+  if      (action==='min')  betAmount = MIN_BET;
+  else if (action==='x2')   betAmount = Math.min(betAmount*2, MAX_BET);
+  else if (action==='div2') betAmount = Math.max(Math.round(betAmount/2), MIN_BET);
+  else if (action==='max')  betAmount = Math.min(Math.floor(balance - totalBets()), MAX_BET);
+  betAmount = Math.max(MIN_BET, Math.min(MAX_BET, Math.round(betAmount)));
+  document.getElementById('betDisplay').textContent = formatF(betAmount);
+}
+function totalBets() { return Object.values(bets).reduce((s,v)=>s+v,0); }
 
-  // ----------------------------------------------------------
-  //  MÉCANIQUE 1 — MODE APPÂT (PREMIÈRE PARTIE)
-  //  La toute première partie tombe toujours sur le 20.
-  //  Objectif : créer immédiatement un sentiment de gain facile,
-  //  ancrer positivement le joueur et l'inciter à continuer.
-  //  La roue tourne lentement pour renforcer l'effet "suspense".
-  // ----------------------------------------------------------
-  isBaitMode() {
-    return this.state.firstGame;
-  },
+// ══════════════ SELECT MULT ══════════════
+function selectMult(btn) {
+  document.querySelectorAll('.mult-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedNum = parseInt(btn.dataset.mult);
+  showMsg('');
+}
 
-  // ----------------------------------------------------------
-  //  MÉCANIQUE 2 — HEURE DÉCLENCHEUR
-  //  Si l'heure courante correspond exactement à l'heure
-  //  programmée, le résultat est forcé sur le 20.
-  //  Crée l'illusion d'un "moment favorable" récurrent,
-  //  pousse le joueur à rejouer à cette heure précise.
-  // ----------------------------------------------------------
-  isTriggerTime() {
-    const now = new Date();
-    return now.getHours() === this.TRIGGER_HOUR &&
-           now.getMinutes() === this.TRIGGER_MINUTE;
-  },
-
-  // ----------------------------------------------------------
-  //  MÉCANIQUE 3 — REPLAY DU DERNIER PERDU
-  //  Après une défaite, il y a une probabilité (30%) que le
-  //  résultat suivant tombe exactement sur le nombre que le
-  //  joueur avait misé et perdu au tour précédent.
-  //  Effet psychologique : frustration ("j'aurais dû rejouer !"),
-  //  puis obsession de "rattraper" la mise en rejouant le même.
-  // ----------------------------------------------------------
-  shouldReplayLoss(mises) {
-    if (!this.state.lastLost) return false;
-    // On ne rejoue le perdu que si le joueur n'a PAS remis
-    // dessus (sinon l'effet est nul — il gagnerait)
-    const didNotReMise = !mises.includes(this.state.lastLost);
-    const probability  = Math.random() < 0.30; // 30% de chances
-    return didNotReMise && probability;
-  },
-
-  // ----------------------------------------------------------
-  //  MÉCANIQUE 4 — BUG SIMULÉ (DISPARITION DE LA ROUE)
-  //  Après plusieurs défaites consécutives (seuil : 4),
-  //  un "bug visuel" est déclenché : la roue disparaît 2s.
-  //  Pendant ce temps le résultat est recalculé côté moteur
-  //  pour tomber sur un secteur défavorable au joueur.
-  //  Effet : le joueur pense à un bug technique, pas à une
-  //  manipulation. Sa méfiance est désamorcée.
-  // ----------------------------------------------------------
-  shouldTriggerBug() {
-    return this.state.consecutiveLoss >= 4 && Math.random() < 0.40;
-  },
-
-  // ----------------------------------------------------------
-  //  POINT D'ENTRÉE PRINCIPAL — DÉCISION DU RÉSULTAT
-  //  Appelé au moment du spin, AVANT l'animation.
-  //  Retourne : { value, sectorIndex, slowSpin, bugMode }
-  //    - value       : valeur du secteur gagnant
-  //    - sectorIndex : index du secteur sur la roue
-  //    - slowSpin    : true = animation lente (mode appât/heure)
-  //    - bugMode     : true = déclencher le bug visuel
-  // ----------------------------------------------------------
-  decide(mises) {
-    this.state.totalGames++;
-    let result;
-    let slowSpin = false;
-    let bugMode  = false;
-
-    // PRIORITÉ 1 — Première partie : appât sur le 20
-    if (this.isBaitMode()) {
-      result   = this.forceDraw(20);
-      slowSpin = true; // roue lente pour l'effet dramatique
-      this.state.firstGame = false;
-    }
-
-    // PRIORITÉ 2 — Heure déclencheur : forcer le 20
-    else if (this.isTriggerTime()) {
-      result   = this.forceDraw(20);
-      slowSpin = true;
-    }
-
-    // PRIORITÉ 3 — Bug simulé après série de défaites
-    else if (this.shouldTriggerBug()) {
-      // On tire un résultat perdant pour le joueur
-      const losingVals = SECTORS.filter(v => !mises.includes(v));
-      const target = losingVals[Math.floor(Math.random() * losingVals.length)];
-      result  = this.forceDraw(target);
-      bugMode = true; // déclenchera la disparition visuelle
-      this.state.consecutiveLoss = 0; // reset après le bug
-    }
-
-    // PRIORITÉ 4 — Replay du dernier perdu (frustration)
-    else if (this.shouldReplayLoss(mises)) {
-      result = this.forceDraw(this.state.lastLost);
-    }
-
-    // DÉFAUT — Tirage aléatoire standard
-    else {
-      result = this.fairDraw();
-    }
-
-    // Mise à jour de l'état interne pour le prochain tour
-    const win = mises.includes(result.value);
-    if (!win) {
-      // Mémoriser la première mise perdue comme "lastLost"
-      this.state.lastLost = mises[0];
-      this.state.consecutiveLoss++;
-    } else {
-      this.state.consecutiveLoss = 0;
-      this.state.lastLost = null;
-    }
-    this.state.lastMises = [...mises];
-
-    return { ...result, slowSpin, bugMode };
+// ══════════════ PLACE MISE ══════════════
+function placeMise() {
+  if (!selectedNum) { showMsg('Choisissez un résultat d\'abord !', 'red'); return; }
+  const raw = betAmount;
+  if (raw < MIN_BET) { showMsg(`Mise minimum : ${formatF(MIN_BET)}`, 'red'); return; }
+  if (raw > MAX_BET) { showMsg(`Mise maximum : ${formatF(MAX_BET)}`, 'red'); return; }
+  if (totalBets() + raw > balance) {
+    showMsg(`Solde insuffisant ! Dispo : ${formatF(balance - totalBets())}`, 'red'); return;
   }
-};
-
-// ============================================================
-//  UI & ANIMATION
-// ============================================================
-const canvas    = document.getElementById('wheel');
-const ctx       = canvas.getContext('2d');
-const playBtn   = document.getElementById('playBtn');
-const resultEl  = document.getElementById('result');
-const picksEl   = document.getElementById('picks');
-const histList  = document.getElementById('historyList');
-const clearBtn  = document.getElementById('clearBtn');
-const statTotal = document.getElementById('statTotal');
-const statWin   = document.getElementById('statWin');
-const statLose  = document.getElementById('statLose');
-
-let currentAngle = 0;
-let spinning     = false;
-let chosen       = new Set();
-let gameCount    = 0;
-let winCount     = 0;
-
-/* ── Resize canvas ── */
-function resize() {
-  const wrap = document.getElementById('wheelWrap');
-  const size = wrap.offsetWidth;
-  canvas.width  = size * devicePixelRatio;
-  canvas.height = size * devicePixelRatio;
-  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-  draw(currentAngle);
+  bets[selectedNum] = (bets[selectedNum] || 0) + raw;
+  showMsg(`Mise ${formatF(raw)} sur x${selectedNum} ajoutée ✓`, 'green');
+  refreshMiseUI();
 }
 
-/* ── Dessin de la roue ── */
-function draw(angle) {
-  const size = canvas.width / devicePixelRatio;
-  const cx = size / 2, cy = size / 2, r = size / 2 - 3;
-  ctx.clearRect(0, 0, size, size);
-
-  for (let i = 0; i < N; i++) {
-    const start = angle + i * ARC;
-    const end   = start + ARC;
-    const val   = SECTORS[i];
-    const sel   = chosen.has(val);
-
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, r, start, end);
-    ctx.closePath();
-    ctx.fillStyle = sel ? lighten(COLORS[val]) : COLORS[val];
-    ctx.fill();
-    ctx.strokeStyle = sel ? 'rgba(255,255,255,.35)' : 'rgba(0,0,0,.35)';
-    ctx.lineWidth = sel ? 2 : 1;
-    ctx.stroke();
-
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(start + ARC / 2);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = val === 20 ? '#1a1a1a' : 'rgba(255,255,255,.92)';
-    ctx.font = `700 ${Math.max(10, size * 0.05)}px 'Playfair Display', serif`;
-    ctx.fillText(String(val), r - 10, 5);
-    ctx.restore();
-  }
-
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, 2 * Math.PI);
-  ctx.strokeStyle = 'rgba(201,168,76,.25)';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(cx, cy, size * 0.09, 0, 2 * Math.PI);
-  ctx.fillStyle = '#0c0c0e';
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(201,168,76,.3)';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-}
-
-function lighten(hex) {
-  const r = parseInt(hex.slice(1,3),16);
-  const g = parseInt(hex.slice(3,5),16);
-  const b = parseInt(hex.slice(5,7),16);
-  return `rgb(${Math.min(255,r+45)},${Math.min(255,g+45)},${Math.min(255,b+45)})`;
-}
-
-/* ── Sélection multi ── */
-function updatePlayBtn() {
-  playBtn.disabled = chosen.size === 0 || spinning;
-  if (chosen.size === 0) {
-    resultEl.textContent = 'Sélectionne un ou plusieurs nombres.';
-    resultEl.className = 'result-box';
-  } else {
-    const list = [...chosen].sort((a,b)=>a-b).join(', ');
-    resultEl.textContent = `Mise : ${list} — Prêt à jouer.`;
-    resultEl.className = 'result-box';
+function deleteMise(mult) {
+  delete bets[mult];
+  refreshMiseUI();
+  // Remove selected highlight if this mult is deleted
+  if (selectedNum === mult) {
+    selectedNum = null;
+    document.querySelectorAll('.mult-btn').forEach(b => b.classList.remove('selected'));
   }
 }
 
-picksEl.querySelectorAll('.pick-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    if (spinning) return;
-    const val = parseInt(btn.dataset.val);
-    if (chosen.has(val)) { chosen.delete(val); btn.classList.remove('selected'); }
-    else                  { chosen.add(val);    btn.classList.add('selected'); }
-    draw(currentAngle);
-    updatePlayBtn();
+function refreshMiseUI() {
+  const total     = totalBets();
+  const totalEl   = document.getElementById('miseTotalDisplay');
+  const rowsEl    = document.getElementById('miseRows');
+  const jouerWrap = document.getElementById('jouerWrap');
+
+  totalEl.textContent = total > 0 ? formatF(total) : '';
+  rowsEl.innerHTML = '';
+
+  Object.entries(bets).forEach(([mult, amt]) => {
+    const m = parseInt(mult);
+    const row = document.createElement('div');
+    row.className = 'mise-row';
+    row.innerHTML = `
+      <div class="mise-row-color" style="background:${COLORS[m]}"></div>
+      <span class="mise-row-amount">${formatF(amt)}</span>
+      <span class="mise-row-del" onclick="deleteMise(${m})">✕</span>`;
+    rowsEl.appendChild(row);
   });
-});
 
-/* ── Spin ── */
-playBtn.addEventListener('click', () => {
-  if (spinning || chosen.size === 0) return;
-
-  const mises = [...chosen].sort((a,b)=>a-b);
-
-  // ----------------------------------------------------------
-  //  APPEL AU MOTEUR — décision prise avant toute animation
-  //  Le résultat est connu ici ; l'animation va juste "jouer"
-  //  jusqu'à l'angle correspondant à ce secteur.
-  // ----------------------------------------------------------
-  const decision = ENGINE.decide(mises);
-
-  spinning = true;
-  playBtn.disabled = true;
-  picksEl.querySelectorAll('.pick-btn').forEach(b => b.disabled = true);
-  resultEl.textContent = 'La roue tourne…';
-  resultEl.className = 'result-box';
-
-  // ----------------------------------------------------------
-  //  BUG MODE — disparition visuelle de la roue 2 secondes
-  //  Le canvas devient invisible, puis réapparaît sur le
-  //  secteur déjà décidé par le moteur.
-  // ----------------------------------------------------------
-  if (decision.bugMode) {
-    canvas.style.opacity = '0';
-    setTimeout(() => {
-      canvas.style.opacity = '1';
-      // On positionne la roue directement sur le résultat
-      // sans animation supplémentaire — effet "téléportation"
-      landOnSector(decision.sectorIndex, false);
-    }, 2000);
-    return;
-  }
-
-  // ----------------------------------------------------------
-  //  ANIMATION NORMALE vers le secteur décidé
-  //  slowSpin = true → durée longue + peu de tours (mode appât)
-  //  slowSpin = false → comportement standard
-  // ----------------------------------------------------------
-  spinToSector(decision.sectorIndex, decision.slowSpin);
-});
-
-// ============================================================
-//  CALCUL DE L'ANGLE CIBLE pour un secteur donné
-//  On calcule l'angle exact pour que le milieu du secteur
-//  visé soit parfaitement aligné avec la flèche (angle 0).
-// ============================================================
-function angleForSector(sectorIndex) {
-  // Milieu du secteur = index * ARC + ARC/2
-  // On veut ce milieu à l'angle 0 (position de la flèche)
-  // donc on soustrait, puis on normalise
-  const mid = sectorIndex * ARC + ARC / 2;
-  return (2 * Math.PI - mid) % (2 * Math.PI);
-}
-
-function spinToSector(sectorIndex, slowSpin) {
-  const targetAngle = angleForSector(sectorIndex);
-  const extraSpins  = slowSpin
-    ? 1 + Math.floor(Math.random() * 2)   // 1-2 tours : lent, dramatique
-    : 5 + Math.floor(Math.random() * 6);  // 5-10 tours : normal
-
-  // Ajustement pour atterrir exactement sur la cible
-  const norm    = ((currentAngle % (2*Math.PI)) + 2*Math.PI) % (2*Math.PI);
-  let   delta   = targetAngle - norm;
-  if (delta < 0) delta += 2 * Math.PI;
-  const total   = extraSpins * 2 * Math.PI + delta;
-
-  const duration   = slowSpin
-    ? 5000 + Math.random() * 2000   // 5-7s pour le mode appât
-    : 3800 + Math.random() * 1500;  // 3.8-5.3s normal
-
-  const tStart     = performance.now();
-  const startAngle = currentAngle;
-
-  function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
-
-  (function animate(now) {
-    const t = Math.min((now - tStart) / duration, 1);
-    currentAngle = startAngle + total * easeOut(t);
-    draw(currentAngle);
-    if (t < 1) requestAnimationFrame(animate);
-    else {
-      currentAngle = startAngle + total;
-      draw(currentAngle);
-      landOnSector(sectorIndex, true);
+  // Update pill sub-amounts
+  document.querySelectorAll('.mult-btn').forEach(btn => {
+    const m = parseInt(btn.dataset.mult);
+    const existing = btn.querySelector('.mult-sub');
+    if (existing) existing.remove();
+    if (bets[m]) {
+      const sub = document.createElement('span');
+      sub.className = 'mult-sub';
+      sub.textContent = formatF(bets[m]);
+      btn.appendChild(sub);
     }
-  })(performance.now());
+  });
+
+  jouerWrap.classList.toggle('hidden', total === 0);
 }
 
-// ============================================================
-//  RÉSULTAT FINAL — affichage et mise à jour de l'état
-// ============================================================
-function landOnSector(sectorIndex, animated) {
-  // Si on arrive via bugMode, on positionne la roue manuellement
-  if (!animated) {
-    currentAngle = angleForSector(sectorIndex);
-    draw(currentAngle);
+function showMsg(txt, color='green') {
+  const el = document.getElementById('msgBar');
+  el.textContent = txt;
+  el.style.color = color === 'red' ? '#ff5252' : '#00e676';
+  if (txt) setTimeout(()=>{ if(el.textContent===txt) el.textContent=''; }, 3000);
+}
+
+// ══════════════ BUILD WHEEL SVG ══════════════
+function buildWheel(rotDeg) {
+  const cx=176, cy=176, r=174, N=WHEEL_ORDER.length;
+  const step = (2*Math.PI)/N;
+  function pt(a) { return {x: cx+r*Math.cos(a), y: cy+r*Math.sin(a)}; }
+
+  const paths = WHEEL_ORDER.map((val,i)=>{
+    const a0 = -Math.PI/2 + i*step, a1 = a0+step;
+    const p1=pt(a0), p2=pt(a1);
+    const d=`M${cx},${cy} L${p1.x.toFixed(2)},${p1.y.toFixed(2)} A${r},${r} 0 0,1 ${p2.x.toFixed(2)},${p2.y.toFixed(2)} Z`;
+    const mid=a0+step/2;
+    const lx=cx+r*0.66*Math.cos(mid), ly=cy+r*0.66*Math.sin(mid);
+    const rot=mid*180/Math.PI+90;
+    return `<path d="${d}" fill="${COLORS[val]}" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+    <text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" fill="white"
+      font-family="'Segoe UI',sans-serif" font-weight="800" font-size="15"
+      text-anchor="middle" dominant-baseline="middle"
+      transform="rotate(${rot.toFixed(1)},${lx.toFixed(1)},${ly.toFixed(1)})">x${val}</text>`;
+  }).join('');
+
+  document.getElementById('wheelSvg').innerHTML =
+    `<defs><clipPath id="wc"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath></defs>
+     <g clip-path="url(#wc)">${paths}</g>`;
+}
+
+// ══════════════ POPULATE SPIN MISE PANEL ══════════════
+function populateSpinPanel() {
+  const panel = document.getElementById('spinMisePanel');
+  const total = totalBets();
+  let html = `<div class="mise-header-title">Votre mise :</div>
+              <div class="mise-header-total">${formatF(total)}</div>`;
+  Object.entries(bets).forEach(([mult, amt])=>{
+    const m = parseInt(mult);
+    html += `<div class="mise-row">
+      <div class="mise-row-color" style="background:${COLORS[m]}"></div>
+      <span class="mise-row-amount">${formatF(amt)}</span>
+      <span class="mise-row-del">✕</span>
+    </div>`;
+  });
+  panel.innerHTML = html;
+}
+
+// ══════════════ SPIN LOGIC ══════════════
+// Reproduit exactement la logique Python :
+// - random.choice(NUMBERS)  → result value
+// - random.choice(target_indexes) → target sector
+// - Easing: 1-(1-prog)^3 sur 8s (Python) → ici 6s
+function startSpin() {
+  if (!Object.keys(bets).length) return;
+  const total = totalBets();
+  if (total > balance) { showMsg('Solde insuffisant !', 'red'); return; }
+
+  // Déduire la mise
+  balance -= total;
+  refreshBalance();
+
+  // Switch UI
+  populateSpinPanel();
+  document.getElementById('state-lobby').classList.add('hidden');
+  document.getElementById('state-wheel').classList.remove('hidden');
+
+  buildWheel();
+
+  const spinner = document.getElementById('wheelSpinner');
+  spinner.style.transition = 'none';
+  spinner.style.transform  = `rotate(${currentRot}deg)`;
+
+  // === LOGIQUE PYTHON REPRODUITE ===
+  // Tirer un résultat parmi NUMBERS (équiprobable sur les valeurs, pas les secteurs)
+  //const result = NUMBERS[Math.floor(Math.random() * NUMBERS.length)];
+  //const result = 20; // remplace 20 par 2, 4, 5, 7, ou 10
+  const urlParams = new URLSearchParams(window.location.search);
+  const forceResult = urlParams.get('force');
+  const result = forceResult && NUMBERS.includes(parseInt(forceResult)) // ajout à la fin de l'Url ?force=20, //2, 4, 5, 7 ou 10
+  ? parseInt(forceResult)
+  : NUMBERS[Math.floor(Math.random() * NUMBERS.length)]; 
+
+  // Trouver les index des secteurs correspondants
+  const targetIndexes = WHEEL_ORDER.reduce((acc,v,i)=> v===result ? [...acc,i] : acc, []);
+  const targetIndex   = targetIndexes[Math.floor(Math.random()*targetIndexes.length)];
+
+  // Angle désiré : secteur targetIndex doit se retrouver à 3h (0°)
+  // Dans Python : desired = (99 - targetIndex*18) % 360
+  // On adapte pour notre repère (roue part de 12h = -90°)
+  // Secteur i → centre à -90° + (i+0.5)*18°
+  // Pour que ce centre soit à 0° (droite = flèche) : rotation = 90° - (i+0.5)*18°
+  const desiredAngle = (90 - (targetIndex + 0.5) * (360/WHEEL_ORDER.length) + 36000) % 360;
+  const startAngle   = currentRot % 360;
+  let   delta        = (desiredAngle - startAngle + 360) % 360;
+  const endAngle     = currentRot + delta + 360 * 8; // 8 tours complets
+
+  const DURATION = 6000; // ms
+  const t0 = performance.now();
+
+  function animate(now) {
+    const t    = Math.min((now - t0) / DURATION, 1);
+    // Easing cubique identique au Python : 1-(1-t)^3
+    const ease = 1 - Math.pow(1-t, 3);
+    const rot  = startAngle + (endAngle - startAngle) * ease;
+    spinner.style.transform = `rotate(${rot}deg)`;
+    if (t < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      currentRot = endAngle % 360;
+      setTimeout(()=> showResult(result, total), 400);
+    }
   }
+  requestAnimationFrame(animate);
+}
 
-  const landed = SECTORS[sectorIndex];
-  const mises  = [...chosen].sort((a,b)=>a-b);
-  const win    = chosen.has(landed);
+function showResult(result, totalBet) {
+  // Calcul gain : uniquement les mises sur le résultat gagnant
+  const won  = Object.entries(bets).filter(([m])=> parseInt(m)===result);
+  const gain = won.reduce((s,[m,a])=> s + parseInt(m)*a, 0);
+  const isWin = gain > 0;
 
-  if (win) {
-    resultEl.innerHTML = `<strong>${landed}</strong> — Victoire !`;
-    resultEl.className = 'result-box win';
-  } else {
-    resultEl.innerHTML = `<strong>${landed}</strong> — Défaite.`;
-    resultEl.className = 'result-box lose';
+  if (isWin) {
+    balance += gain;
+    refreshBalance();
   }
+  saveBalance();
 
-  gameCount++;
-  if (win) winCount++;
-  statTotal.textContent = gameCount;
-  statWin.textContent   = winCount;
-  statLose.textContent  = gameCount - winCount;
+  // Detail des mises gagnantes
+  const detailText = won.length > 0
+    ? `${formatF(won[0][1])} × x${result}`
+    : `Aucune mise sur x${result}`;
 
-  addHistoryEntry(gameCount, landed, mises, win);
-
-  spinning = false;
-  picksEl.querySelectorAll('.pick-btn').forEach(b => b.disabled = false);
-  playBtn.disabled = chosen.size === 0;
+  const phone = document.querySelector('.phone');
+  const overlay = document.createElement('div');
+  overlay.className = 'result-overlay';
+  overlay.innerHTML = `
+    <div class="result-box">
+      <div class="result-sector-label">Secteur tiré</div>
+      <div class="result-mult" style="color:${COLORS[result]}">x${result}</div>
+      <div class="result-detail">${detailText}</div>
+      <div class="result-gain ${isWin?'win':'lose'}">
+        ${isWin ? `Gain : <span>+${formatF(gain)}</span>` : `<span>Perdu</span>`}
+      </div>
+      <div class="result-new-balance">Solde : ${formatF(balance)}</div>
+      <button class="result-btn" onclick="resetGame()">REJOUER</button>
+    </div>`;
+  phone.appendChild(overlay);
 }
 
-/* ── Historique ── */
-function addHistoryEntry(num, landed, mises, win) {
-  const empty = histList.querySelector('.history-empty');
-  if (empty) empty.remove();
-
-  const row = document.createElement('div');
-  row.className = 'history-row';
-  const color = COLORS[landed] || '#888';
-  row.innerHTML = `
-    <span class="hist-num">${num}</span>
-    <span class="hist-badge" style="background:${color}">${landed}</span>
-    <span class="hist-detail">Mise sur <strong>${mises.join(', ')}</strong></span>
-    <span class="hist-tag ${win ? 'win' : 'lose'}">${win ? 'Gagné' : 'Perdu'}</span>
-  `;
-  histList.insertBefore(row, histList.firstChild);
+function resetGame() {
+  document.querySelector('.result-overlay')?.remove();
+  bets = {};
+  selectedNum = null;
+  document.querySelectorAll('.mult-btn').forEach(b => {
+    b.classList.remove('selected');
+    b.querySelector('.mult-sub')?.remove();
+  });
+  refreshMiseUI();
+  showMsg('');
+  document.getElementById('state-wheel').classList.add('hidden');
+  document.getElementById('state-lobby').classList.remove('hidden');
 }
 
-clearBtn.addEventListener('click', () => {
-  histList.innerHTML = '<p class="history-empty">Aucune partie jouée.</p>';
-  gameCount = 0; winCount = 0;
-  statTotal.textContent = '0';
-  statWin.textContent   = '0';
-  statLose.textContent  = '0';
-  resultEl.textContent  = 'Sélectionne un ou plusieurs nombres.';
-  resultEl.className    = 'result-box';
-  // Reset du moteur aussi
-  ENGINE.state.totalGames      = 0;
-  ENGINE.state.lastLost        = null;
-  ENGINE.state.firstGame       = true;
-  ENGINE.state.consecutiveLoss = 0;
-});
+function openRules() {
+  const phone = document.querySelector('.phone');
+  const overlay = document.createElement('div');
+  overlay.className = 'rules-overlay';
+  overlay.id = 'rulesOverlay';
+  overlay.innerHTML = `
+    <div class="rules-box">
+      <div class="rules-header">
+        <span class="rules-title">📋 Règles du jeu</span>
+        <div class="rules-close" onclick="closeRules()">✕</div>
+      </div>
+      <div class="rules-list">
+        <div class="rules-item">
+          <div class="rules-num">1</div>
+          <div class="rules-text">Placez un pari sur un ou plusieurs secteurs. Le montant initial de la mise est déterminé <strong>avant</strong> le début du jeu.</div>
+        </div>
+        <div class="rules-divider"></div>
+        <div class="rules-item">
+          <div class="rules-num">2</div>
+          <div class="rules-text">Mise <strong>minimale : 200 XOF</strong><br>Mise <strong>maximale : 710 001 XOF</strong></div>
+        </div>
+        <div class="rules-divider"></div>
+        <div class="rules-item">
+          <div class="rules-num">3</div>
+          <div class="rules-text">Appuyez sur le bouton <strong>« JOUER »</strong> pour lancer la roue.</div>
+        </div>
+        <div class="rules-divider"></div>
+        <div class="rules-item">
+          <div class="rules-num">4</div>
+          <div class="rules-text">Le secteur sur lequel la <strong>flèche s'arrête</strong> est le secteur gagnant.</div>
+        </div>
+        <div class="rules-divider"></div>
+        <div class="rules-item">
+          <div class="rules-num">5</div>
+          <div class="rules-text">Si vous pariez sur le secteur gagnant, vos gains sont calculés selon la <strong>cote indiquée</strong> sur ce secteur.</div>
+        </div>
+        <div class="rules-divider"></div>
+        <div class="rules-item">
+          <div class="rules-num">6</div>
+          <div class="rules-text">En cas de problème, contactez-nous dans les <strong>3 jours</strong> suivant la fin du jeu.</div>
+        </div>
+      </div>
+      <div class="rules-footer">
+        ⚠️ Le jeu doit être pratiqué de manière responsable.<br>
+        Jouez dans vos limites.
+      </div>
+    </div>`;
+  phone.appendChild(overlay);
+}
 
-/* ── Init ── */
-const ro = new ResizeObserver(() => { ctx.setTransform(1,0,0,1,0,0); resize(); });
-ro.observe(document.getElementById('wheelWrap'));
-resize();
+function closeRules() {
+  document.getElementById('rulesOverlay')?.remove();
+}
+
+// ══════════════ INIT ══════════════
+refreshBalance();
+buildWheel();
+refreshMiseUI();
 </script>
 </body>
 </html>
